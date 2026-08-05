@@ -1,4 +1,7 @@
+//! Integration tests for bundle and document parsing.
+
 use std::fs;
+use std::path::Path;
 
 use okf::{BundleParser, Error, parse_document};
 use serde_json::json;
@@ -46,13 +49,8 @@ A sidecar supplies tools to an AI runtime.
         Some(&json!("platform"))
     );
     assert_eq!(sidecar.metadata().links[0].relation(), "used-by");
-    assert_eq!(
-        sidecar
-            .source_path()
-            .expect("source path")
-            .to_string_lossy(),
-        "concepts/sidecar.md"
-    );
+    let expected_path = Path::new("concepts").join("sidecar.md");
+    assert_eq!(sidecar.source_path(), Some(expected_path.as_path()));
 
     Ok(())
 }

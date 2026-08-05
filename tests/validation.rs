@@ -1,3 +1,5 @@
+//! Integration tests for validation and graph traversal.
+
 use okf::{Bundle, Document, DocumentId, KnowledgeGraph, Metadata, Reference, Severity, Validator};
 
 fn document(id: &str, title: &str, metadata: Metadata) -> Document {

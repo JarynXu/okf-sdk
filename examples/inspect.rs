@@ -1,3 +1,5 @@
+//! Example command that loads, validates, and searches an OKF bundle.
+
 use std::env;
 use std::process::ExitCode;
 

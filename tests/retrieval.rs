@@ -1,3 +1,5 @@
+//! Integration tests for deterministic lexical retrieval.
+
 use okf::{Bundle, Document, DocumentId, MatchField, Metadata, SearchQuery};
 
 fn insert(
