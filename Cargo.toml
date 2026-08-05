@@ -1,0 +1,32 @@
+[package]
+name = "okf"
+version = "0.1.0-alpha.1"
+edition = "2024"
+rust-version = "1.85"
+description = "A vendor-neutral Rust SDK for Open Knowledge Format bundles"
+license = "Apache-2.0"
+repository = "https://github.com/open-knowledge-stack/okf-sdk"
+homepage = "https://github.com/open-knowledge-stack/okf-sdk"
+readme = "README.md"
+keywords = ["knowledge", "markdown", "retrieval", "graph", "okf"]
+categories = ["data-structures", "filesystem", "parser-implementations"]
+exclude = [".github/"]
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "2.0"
+walkdir = "2.5"
+yaml_serde = "0.10"
+
+[dev-dependencies]
+tempfile = "3.20"
+
+[lints.rust]
+missing_docs = "warn"
+unsafe_code = "forbid"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
