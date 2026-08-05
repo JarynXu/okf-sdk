@@ -179,7 +179,10 @@ fn score_field(
     matched_field: MatchField,
     matched_fields: &mut BTreeSet<MatchField>,
 ) -> u32 {
-    let matches = terms.iter().filter(|term| field.contains(term.as_str())).count() as u32;
+    let matches = terms
+        .iter()
+        .filter(|term| field.contains(term.as_str()))
+        .count() as u32;
     if matches > 0 {
         matched_fields.insert(matched_field);
     }

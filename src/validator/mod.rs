@@ -187,20 +187,25 @@ impl Validator {
                     report.push(ValidationIssue::new(
                         Severity::Error,
                         "OKF201",
-                        format!("reference to '{}' has an empty relation", reference.target()),
+                        format!(
+                            "reference to '{}' has an empty relation",
+                            reference.target()
+                        ),
                         Some(document.id().clone()),
                     ));
                 }
 
                 match bundle.resolve(reference.target().as_str()) {
                     Some(target)
-                        if target.id() == document.id()
-                            && self.options.warn_on_self_references =>
+                        if target.id() == document.id() && self.options.warn_on_self_references =>
                     {
                         report.push(ValidationIssue::new(
                             Severity::Warning,
                             "OKF202",
-                            format!("document references itself through '{}'", reference.relation()),
+                            format!(
+                                "document references itself through '{}'",
+                                reference.relation()
+                            ),
                             Some(document.id().clone()),
                         ));
                     }

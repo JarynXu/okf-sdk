@@ -46,10 +46,9 @@ impl DocumentId {
                     "'.' and '..' path segments are not allowed",
                 ));
             }
-            if let Some(character) = segment
-                .chars()
-                .find(|character| !character.is_alphanumeric() && !matches!(*character, '-' | '_' | '.'))
-            {
+            if let Some(character) = segment.chars().find(|character| {
+                !character.is_alphanumeric() && !matches!(*character, '-' | '_' | '.')
+            }) {
                 return Err(InvalidDocumentId::new(
                     value,
                     format!("character '{character}' is not allowed"),

@@ -8,13 +8,10 @@ fn insert(
     tags: &[&str],
 ) -> okf::Result<()> {
     let mut metadata = Metadata::default();
-    metadata.tags.extend(tags.iter().map(|tag| (*tag).to_owned()));
-    bundle.insert(Document::new(
-        DocumentId::new(id)?,
-        title,
-        body,
-        metadata,
-    ))
+    metadata
+        .tags
+        .extend(tags.iter().map(|tag| (*tag).to_owned()));
+    bundle.insert(Document::new(DocumentId::new(id)?, title, body, metadata))
 }
 
 #[test]

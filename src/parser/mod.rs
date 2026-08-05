@@ -74,8 +74,8 @@ impl BundleParser {
                 continue;
             }
 
-            let source = fs::read_to_string(entry.path())
-                .map_err(|error| Error::io(entry.path(), error))?;
+            let source =
+                fs::read_to_string(entry.path()).map_err(|error| Error::io(entry.path(), error))?;
             let relative_path = entry.path().strip_prefix(&root).unwrap_or(entry.path());
             bundle.insert(parse_document_internal(&source, relative_path)?)?;
         }
@@ -106,12 +106,11 @@ fn parse_document_internal(source: &str, source_path: &Path) -> Result<Document>
     let (front_matter, body) = match split_front_matter(source) {
         Ok(FrontMatterParts::None(body)) => (FrontMatter::default(), body),
         Ok(FrontMatterParts::Present { yaml, body }) => {
-            let front_matter = yaml_serde::from_str::<FrontMatter>(yaml).map_err(|source| {
-                Error::FrontMatter {
+            let front_matter =
+                yaml_serde::from_str::<FrontMatter>(yaml).map_err(|source| Error::FrontMatter {
                     path: source_path.to_path_buf(),
                     source,
-                }
-            })?;
+                })?;
             (front_matter, body)
         }
         Err(()) => {
@@ -197,8 +196,8 @@ mod tests {
 
     #[test]
     fn maps_nested_index_to_directory_identifier() {
-        let document = parse_document("Body", "architecture/index.md")
-            .expect("document should parse");
+        let document =
+            parse_document("Body", "architecture/index.md").expect("document should parse");
 
         assert_eq!(document.id().as_str(), "architecture");
     }

@@ -36,12 +36,23 @@ A sidecar supplies tools to an AI runtime.
     let bundle = BundleParser::default().parse_dir(directory.path())?;
 
     assert_eq!(bundle.len(), 2);
-    let sidecar = bundle.get_by_id("concepts/sidecar").expect("sidecar document");
+    let sidecar = bundle
+        .get_by_id("concepts/sidecar")
+        .expect("sidecar document");
     assert_eq!(sidecar.title(), "Sidecar");
     assert!(sidecar.metadata().tags.contains("architecture"));
-    assert_eq!(sidecar.metadata().extra.get("owner"), Some(&json!("platform")));
+    assert_eq!(
+        sidecar.metadata().extra.get("owner"),
+        Some(&json!("platform"))
+    );
     assert_eq!(sidecar.metadata().links[0].relation(), "used-by");
-    assert_eq!(sidecar.source_path().expect("source path").to_string_lossy(), "concepts/sidecar.md");
+    assert_eq!(
+        sidecar
+            .source_path()
+            .expect("source path")
+            .to_string_lossy(),
+        "concepts/sidecar.md"
+    );
 
     Ok(())
 }

@@ -76,10 +76,7 @@ impl KnowledgeGraph {
     }
 
     /// Iterates over direct outgoing neighbors in identifier order.
-    pub fn outgoing<'a>(
-        &'a self,
-        id: &'a DocumentId,
-    ) -> impl Iterator<Item = &'a DocumentId> + 'a {
+    pub fn outgoing<'a>(&'a self, id: &'a DocumentId) -> impl Iterator<Item = &'a DocumentId> + 'a {
         self.outgoing
             .get(id)
             .into_iter()
@@ -87,10 +84,7 @@ impl KnowledgeGraph {
     }
 
     /// Iterates over direct incoming neighbors in identifier order.
-    pub fn incoming<'a>(
-        &'a self,
-        id: &'a DocumentId,
-    ) -> impl Iterator<Item = &'a DocumentId> + 'a {
+    pub fn incoming<'a>(&'a self, id: &'a DocumentId) -> impl Iterator<Item = &'a DocumentId> + 'a {
         self.incoming
             .get(id)
             .into_iter()
@@ -140,7 +134,12 @@ impl KnowledgeGraph {
                 continue;
             }
             if let Some(neighbors) = self.outgoing.get(&current) {
-                queue.extend(neighbors.iter().filter(|id| !visited.contains(*id)).cloned());
+                queue.extend(
+                    neighbors
+                        .iter()
+                        .filter(|id| !visited.contains(*id))
+                        .cloned(),
+                );
             }
         }
 
@@ -148,11 +147,7 @@ impl KnowledgeGraph {
     }
 
     /// Finds a deterministic shortest directed path, including both endpoints.
-    pub fn shortest_path(
-        &self,
-        start: &DocumentId,
-        goal: &DocumentId,
-    ) -> Option<Vec<DocumentId>> {
+    pub fn shortest_path(&self, start: &DocumentId, goal: &DocumentId) -> Option<Vec<DocumentId>> {
         if !self.contains(start) || !self.contains(goal) {
             return None;
         }

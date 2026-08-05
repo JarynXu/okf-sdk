@@ -1,6 +1,4 @@
-use okf::{
-    Bundle, Document, DocumentId, KnowledgeGraph, Metadata, Reference, Severity, Validator,
-};
+use okf::{Bundle, Document, DocumentId, KnowledgeGraph, Metadata, Reference, Severity, Validator};
 
 fn document(id: &str, title: &str, metadata: Metadata) -> Document {
     Document::new(
@@ -37,7 +35,11 @@ fn validates_references_aliases_and_orphans() -> okf::Result<()> {
     assert!(codes.contains(&"OKF104"));
     assert!(codes.contains(&"OKF203"));
     assert!(codes.contains(&"OKF301"));
-    assert!(report.errors().all(|issue| issue.severity == Severity::Error));
+    assert!(
+        report
+            .errors()
+            .all(|issue| issue.severity == Severity::Error)
+    );
     Ok(())
 }
 
