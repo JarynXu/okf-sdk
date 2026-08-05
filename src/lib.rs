@@ -1,12 +1,12 @@
 //! OKF SDK core library.
 //!
-//! This crate provides foundational types and APIs for working with
-//! Open Knowledge Format (OKF) knowledge systems.
+//! Provides foundational APIs for Open Knowledge Format knowledge systems.
 
-pub mod model {
-    /// A placeholder for the OKF bundle model.
-    #[derive(Debug, Clone, Default)]
-    pub struct Bundle;
-}
+pub mod error;
+pub mod graph;
+pub mod model;
+pub mod parser;
+pub mod retrieval;
+pub mod validator;
 
-pub use model::Bundle;
+pub use model::bundle::Bundle;
