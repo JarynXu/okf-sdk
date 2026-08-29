@@ -73,14 +73,17 @@ impl HttpLibraryProvider {
         }
     }
 
-    fn invoke<T: serde::de::DeserializeOwned>(&self, request: &ProviderRequest) -> LibraryResult<T> {
+    fn invoke(&self, request: &ProviderRequest) -> LibraryResult<ProviderResponse> {
         let mut builder = self.client.post(&self.endpoint).json(request);
         if let Some(token) = &self.bearer_token {
             builder = builder.bearer_auth(token);
         }
-        let response = builder.send().map_err(http_error)?.error_for_status().map_err(http_error)?;
-        let envelope: ProviderResponse = response.json().map_err(http_error)?;
-        envelope.into_typed()
+        let response = builder
+            .send()
+            .map_err(http_error)?
+            .error_for_status()
+            .map_err(http_error)?;
+        response.json().map_err(http_error)
     }
 }
 
@@ -95,17 +98,20 @@ impl LibraryProvider for HttpLibraryProvider {
 
     fn catalog(&self, library: &LibraryId) -> LibraryResult<LibraryCatalog> {
         self.ensure_library(library)?;
-        self.invoke(&ProviderRequest::catalog(library.clone()))
+        self.invoke(&ProviderRequest::catalog(library.clone()))?
+            .into_catalog()
     }
 
     fn list(&self, library: &LibraryId, path: &str) -> LibraryResult<Vec<KnowledgeNode>> {
         self.ensure_library(library)?;
-        self.invoke(&ProviderRequest::list(library.clone(), path))
+        self.invoke(&ProviderRequest::list(library.clone(), path))?
+            .into_nodes()
     }
 
     fn read(&self, uri: &KnowledgeUri) -> LibraryResult<String> {
         self.ensure_library(uri.library())?;
-        self.invoke(&ProviderRequest::read(uri.clone()))
+        self.invoke(&ProviderRequest::read(uri.clone()))?
+            .into_typed()
     }
 
     fn query(
@@ -114,11 +120,13 @@ impl LibraryProvider for HttpLibraryProvider {
         query: &LibraryQuery,
     ) -> LibraryResult<LibraryQueryResult> {
         self.ensure_library(library)?;
-        self.invoke(&ProviderRequest::query(library.clone(), query.clone()))
+        self.invoke(&ProviderRequest::query(library.clone(), query.clone()))?
+            .into_query_result()
     }
 
     fn refresh(&self) -> LibraryResult<()> {
-        self.invoke(&ProviderRequest::refresh(self.library.clone()))
+        self.invoke(&ProviderRequest::refresh(self.library.clone()))?
+            .into_typed()
     }
 }
 
