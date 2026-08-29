@@ -3,12 +3,11 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::{Read, Write};
 use std::path::PathBuf;
-use std::process::{Command, Stdio};
+use std::process::{Command, ExitStatus, Stdio};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use serde::de::DeserializeOwned;
-use wait_timeout::ChildExt;
 
 use crate::library::{
     KnowledgeNode, KnowledgeUri, LibraryCapability, LibraryCatalog, LibraryError, LibraryId,
@@ -146,20 +145,7 @@ impl ProcessLibraryProvider {
             })?;
         }
 
-        let status = child
-            .wait_timeout(self.timeout)
-            .map_err(|error| LibraryError::Provider(format!("failed waiting for provider: {error}")))?;
-        let status = match status {
-            Some(status) => status,
-            None => {
-                let _ = child.kill();
-                let _ = child.wait();
-                return Err(LibraryError::Provider(format!(
-                    "process provider '{}' timed out after {:?}",
-                    self.id, self.timeout
-                )));
-            }
-        };
+        let status = wait_with_timeout(&mut child, self.timeout)?;
         let stdout = stdout_reader
             .join()
             .map_err(|_| LibraryError::Provider("provider stdout reader panicked".to_owned()))??;
@@ -216,6 +202,26 @@ impl LibraryProvider for ProcessLibraryProvider {
 
     fn refresh(&self) -> LibraryResult<()> {
         self.invoke(&ProviderRequest::refresh(self.library.clone()))
+    }
+}
+
+fn wait_with_timeout(child: &mut std::process::Child, timeout: Duration) -> LibraryResult<ExitStatus> {
+    let started = Instant::now();
+    loop {
+        if let Some(status) = child
+            .try_wait()
+            .map_err(|error| LibraryError::Provider(format!("failed waiting for provider: {error}")))?
+        {
+            return Ok(status);
+        }
+        if started.elapsed() >= timeout {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Err(LibraryError::Provider(format!(
+                "process provider timed out after {timeout:?}"
+            )));
+        }
+        thread::sleep(Duration::from_millis(10));
     }
 }
 
