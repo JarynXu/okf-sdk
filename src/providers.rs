@@ -3,9 +3,9 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::library::{
-    CatalogEntry, KnowledgeNode, KnowledgeNodeKind, KnowledgeUri, LibraryCapability, LibraryCatalog,
-    LibraryError, LibraryId, LibraryProvider, LibraryQuery, LibraryQueryHit, LibraryQueryResult,
-    LibraryResult, QueryStrategy,
+    CatalogEntry, KnowledgeNode, KnowledgeNodeKind, KnowledgeUri, LibraryCapability,
+    LibraryCatalog, LibraryError, LibraryId, LibraryProvider, LibraryQuery, LibraryQueryHit,
+    LibraryQueryResult, LibraryResult, QueryStrategy,
 };
 use crate::model::Bundle;
 use crate::retrieval::SearchQuery;
@@ -127,7 +127,11 @@ impl LibraryProvider for BundleLibraryProvider {
             .ok_or_else(|| LibraryError::NodeNotFound(uri.to_string()))
     }
 
-    fn query(&self, library: &LibraryId, query: &LibraryQuery) -> LibraryResult<LibraryQueryResult> {
+    fn query(
+        &self,
+        library: &LibraryId,
+        query: &LibraryQuery,
+    ) -> LibraryResult<LibraryQueryResult> {
         let hits = self
             .bundle
             .search(&SearchQuery::new(&query.text).limit(query.limit))
@@ -297,7 +301,11 @@ impl LibraryProvider for VirtualLibraryProvider {
             .ok_or_else(|| LibraryError::NodeNotFound(uri.to_string()))
     }
 
-    fn query(&self, library: &LibraryId, query: &LibraryQuery) -> LibraryResult<LibraryQueryResult> {
+    fn query(
+        &self,
+        library: &LibraryId,
+        query: &LibraryQuery,
+    ) -> LibraryResult<LibraryQueryResult> {
         if query.limit == 0 {
             return Ok(LibraryQueryResult {
                 answer: None,

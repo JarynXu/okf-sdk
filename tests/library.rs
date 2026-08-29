@@ -36,23 +36,24 @@ fn virtual_library_mounts_without_physical_files() {
 
     let root = registry.list(&id, "").unwrap();
     assert!(root.iter().all(|node| node.virtual_node));
-    assert!(root
-        .iter()
-        .any(|node| node.kind == KnowledgeNodeKind::Directory));
+    assert!(
+        root.iter()
+            .any(|node| node.kind == KnowledgeNodeKind::Directory)
+    );
 
     let catalog = registry.catalog(&id).unwrap();
     assert_eq!(catalog.entries.len(), 1);
 
-    let query = registry
-        .query(&id, &LibraryQuery::new("runtime"))
-        .unwrap();
+    let query = registry.query(&id, &LibraryQuery::new("runtime")).unwrap();
     assert_eq!(query.hits.len(), 1);
     assert_eq!(query.hits[0].uri.path(), "architecture/runtime");
 
     registry.unmount(&id).unwrap();
-    assert!(registry
-        .read(&KnowledgeUri::new(id, "status/current").unwrap())
-        .is_err());
+    assert!(
+        registry
+            .read(&KnowledgeUri::new(id, "status/current").unwrap())
+            .is_err()
+    );
 }
 
 #[test]
@@ -82,7 +83,14 @@ fn okf_bundle_uses_the_same_runtime_contract() {
         .unwrap();
     assert!(text.contains("coordinates tools"));
     assert_eq!(registry.catalog(&id).unwrap().entries.len(), 1);
-    assert_eq!(registry.query(&id, &LibraryQuery::new("runtime")).unwrap().hits.len(), 1);
+    assert_eq!(
+        registry
+            .query(&id, &LibraryQuery::new("runtime"))
+            .unwrap()
+            .hits
+            .len(),
+        1
+    );
 }
 
 #[test]

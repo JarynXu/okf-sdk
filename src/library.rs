@@ -53,9 +53,9 @@ impl LibraryId {
     pub fn parse(value: impl Into<String>) -> LibraryResult<Self> {
         let value = value.into();
         let valid = !value.is_empty()
-            && value
-                .chars()
-                .all(|character| character.is_ascii_alphanumeric() || matches!(character, '-' | '_' | '.'));
+            && value.chars().all(|character| {
+                character.is_ascii_alphanumeric() || matches!(character, '-' | '_' | '.')
+            });
         if !valid {
             return Err(LibraryError::InvalidLibraryId(value));
         }
@@ -341,7 +341,9 @@ pub trait LibraryProvider: Send + Sync {
     /// Returns the semantic catalog.
     fn catalog(&self, library: &LibraryId) -> LibraryResult<LibraryCatalog> {
         let _ = library;
-        Err(LibraryError::UnsupportedCapability(LibraryCapability::Catalog))
+        Err(LibraryError::UnsupportedCapability(
+            LibraryCapability::Catalog,
+        ))
     }
 
     /// Lists direct children under a logical path.
@@ -357,14 +359,22 @@ pub trait LibraryProvider: Send + Sync {
     }
 
     /// Executes a provider-defined query.
-    fn query(&self, library: &LibraryId, query: &LibraryQuery) -> LibraryResult<LibraryQueryResult> {
+    fn query(
+        &self,
+        library: &LibraryId,
+        query: &LibraryQuery,
+    ) -> LibraryResult<LibraryQueryResult> {
         let _ = (library, query);
-        Err(LibraryError::UnsupportedCapability(LibraryCapability::Query))
+        Err(LibraryError::UnsupportedCapability(
+            LibraryCapability::Query,
+        ))
     }
 
     /// Refreshes provider-derived state.
     fn refresh(&self) -> LibraryResult<()> {
-        Err(LibraryError::UnsupportedCapability(LibraryCapability::Refresh))
+        Err(LibraryError::UnsupportedCapability(
+            LibraryCapability::Refresh,
+        ))
     }
 }
 
@@ -453,7 +463,10 @@ impl LibraryRegistry {
 
     /// Returns all registered manifests in identity order.
     pub fn libraries(&self) -> Vec<&LibraryManifest> {
-        self.registered.values().map(LibraryInstance::manifest).collect()
+        self.registered
+            .values()
+            .map(LibraryInstance::manifest)
+            .collect()
     }
 
     /// Returns mounted Library identities in deterministic order.
@@ -503,7 +516,10 @@ impl LibraryRegistry {
     }
 
     /// Queries every mounted Library that declares query support.
-    pub fn query_all(&self, query: &LibraryQuery) -> Vec<(LibraryId, LibraryResult<LibraryQueryResult>)> {
+    pub fn query_all(
+        &self,
+        query: &LibraryQuery,
+    ) -> Vec<(LibraryId, LibraryResult<LibraryQueryResult>)> {
         self.mounted
             .iter()
             .filter_map(|id| {
@@ -533,7 +549,10 @@ impl LibraryRegistry {
     }
 }
 
-fn require_capability(provider: &dyn LibraryProvider, capability: LibraryCapability) -> LibraryResult<()> {
+fn require_capability(
+    provider: &dyn LibraryProvider,
+    capability: LibraryCapability,
+) -> LibraryResult<()> {
     if provider.capabilities().contains(&capability) {
         Ok(())
     } else {
