@@ -1,11 +1,14 @@
 //! Language-neutral request/response model for external Library providers.
 
+use std::collections::{BTreeMap, BTreeSet};
+
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::library::{
-    KnowledgeUri, LibraryError, LibraryId, LibraryQuery, LibraryResult,
+    CatalogEntry, KnowledgeNode, KnowledgeNodeKind, KnowledgeUri, LibraryCatalog, LibraryError,
+    LibraryId, LibraryQuery, LibraryQueryHit, LibraryQueryResult, LibraryResult, QueryStrategy,
 };
 
 /// Stable provider protocol identifier.
@@ -28,6 +31,9 @@ pub enum ProviderOperation {
 }
 
 /// Portable request envelope used by external provider transports.
+///
+/// Canonical knowledge URIs cross process/HTTP boundaries as `okf://...` strings. This keeps the
+/// wire protocol independent of the Rust SDK's internal struct representation.
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct ProviderRequest {
     /// Protocol identifier. Must be [`PROVIDER_PROTOCOL_V1`].
@@ -39,9 +45,9 @@ pub struct ProviderRequest {
     /// Logical path for `list`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub path: Option<String>,
-    /// Canonical URI for `read`.
+    /// Canonical `okf://...` URI string for `read`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub uri: Option<KnowledgeUri>,
+    pub uri: Option<String>,
     /// Query payload for `query`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub query: Option<LibraryQuery>,
@@ -63,7 +69,7 @@ impl ProviderRequest {
     /// Creates a read request.
     pub fn read(uri: KnowledgeUri) -> Self {
         let mut request = Self::new(uri.library().clone(), ProviderOperation::Read);
-        request.uri = Some(uri);
+        request.uri = Some(uri.to_string());
         request
     }
 
@@ -135,8 +141,33 @@ impl ProviderResponse {
         }
     }
 
-    /// Decodes a successful payload into a typed Provider contract value.
+    /// Decodes a successful payload into a transport-native value.
     pub fn into_typed<T: DeserializeOwned>(self) -> LibraryResult<T> {
+        serde_json::from_value(self.success_data()?).map_err(protocol_error)
+    }
+
+    /// Decodes a language-neutral catalog payload into SDK domain values.
+    pub fn into_catalog(self) -> LibraryResult<LibraryCatalog> {
+        let wire: WireLibraryCatalog = serde_json::from_value(self.success_data()?)
+            .map_err(protocol_error)?;
+        wire.try_into()
+    }
+
+    /// Decodes language-neutral knowledge nodes into SDK domain values.
+    pub fn into_nodes(self) -> LibraryResult<Vec<KnowledgeNode>> {
+        let wire: Vec<WireKnowledgeNode> = serde_json::from_value(self.success_data()?)
+            .map_err(protocol_error)?;
+        wire.into_iter().map(TryInto::try_into).collect()
+    }
+
+    /// Decodes a language-neutral query result into SDK domain values.
+    pub fn into_query_result(self) -> LibraryResult<LibraryQueryResult> {
+        let wire: WireQueryResult = serde_json::from_value(self.success_data()?)
+            .map_err(protocol_error)?;
+        wire.try_into()
+    }
+
+    fn success_data(self) -> LibraryResult<Value> {
         if !self.ok {
             let error = self.error.unwrap_or(ProviderProtocolError {
                 code: "provider-error".to_owned(),
@@ -147,8 +178,128 @@ impl ProviderResponse {
                 error.code, error.message
             )));
         }
-        let data = self.data.unwrap_or(Value::Null);
-        serde_json::from_value(data).map_err(protocol_error)
+        Ok(self.data.unwrap_or(Value::Null))
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct WireLibraryCatalog {
+    library: String,
+    entries: Vec<WireCatalogEntry>,
+}
+
+#[derive(Debug, Deserialize)]
+struct WireCatalogEntry {
+    id: String,
+    title: String,
+    #[serde(default)]
+    description: Option<String>,
+    uri: String,
+    #[serde(default)]
+    terms: BTreeSet<String>,
+}
+
+impl TryFrom<WireLibraryCatalog> for LibraryCatalog {
+    type Error = LibraryError;
+
+    fn try_from(value: WireLibraryCatalog) -> Result<Self, Self::Error> {
+        let library = LibraryId::parse(value.library)?;
+        let entries = value
+            .entries
+            .into_iter()
+            .map(|entry| {
+                let uri = KnowledgeUri::parse(&entry.uri)?;
+                if uri.library() != &library {
+                    return Err(LibraryError::Provider(format!(
+                        "catalog URI '{}' does not belong to Library '{}'",
+                        uri, library
+                    )));
+                }
+                Ok(CatalogEntry {
+                    id: entry.id,
+                    title: entry.title,
+                    description: entry.description,
+                    uri,
+                    terms: entry.terms,
+                })
+            })
+            .collect::<LibraryResult<Vec<_>>>()?;
+        Ok(Self { library, entries })
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct WireKnowledgeNode {
+    uri: String,
+    kind: KnowledgeNodeKind,
+    #[serde(default)]
+    title: Option<String>,
+    #[serde(default)]
+    virtual_node: bool,
+}
+
+impl TryFrom<WireKnowledgeNode> for KnowledgeNode {
+    type Error = LibraryError;
+
+    fn try_from(value: WireKnowledgeNode) -> Result<Self, Self::Error> {
+        Ok(Self {
+            uri: KnowledgeUri::parse(&value.uri)?,
+            kind: value.kind,
+            title: value.title,
+            virtual_node: value.virtual_node,
+        })
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct WireQueryResult {
+    #[serde(default)]
+    answer: Option<String>,
+    #[serde(default)]
+    hits: Vec<WireQueryHit>,
+    provider: String,
+    strategy: QueryStrategy,
+    #[serde(default)]
+    provenance: BTreeMap<String, String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct WireQueryHit {
+    uri: String,
+    #[serde(default)]
+    title: Option<String>,
+    #[serde(default)]
+    snippet: Option<String>,
+    #[serde(default)]
+    score: Option<f64>,
+    #[serde(default)]
+    metadata: BTreeMap<String, String>,
+}
+
+impl TryFrom<WireQueryResult> for LibraryQueryResult {
+    type Error = LibraryError;
+
+    fn try_from(value: WireQueryResult) -> Result<Self, Self::Error> {
+        let hits = value
+            .hits
+            .into_iter()
+            .map(|hit| {
+                Ok(LibraryQueryHit {
+                    uri: KnowledgeUri::parse(&hit.uri)?,
+                    title: hit.title,
+                    snippet: hit.snippet,
+                    score: hit.score,
+                    metadata: hit.metadata,
+                })
+            })
+            .collect::<LibraryResult<Vec<_>>>()?;
+        Ok(Self {
+            answer: value.answer,
+            hits,
+            provider: value.provider,
+            strategy: value.strategy,
+            provenance: value.provenance,
+        })
     }
 }
 
@@ -178,14 +329,31 @@ mod tests {
     use super::*;
 
     #[test]
-    fn request_and_response_round_trip() {
+    fn request_uses_canonical_uri_strings() {
         let id = LibraryId::parse("demo").expect("id");
-        let request = ProviderRequest::query(id, LibraryQuery::new("hello").limit(3));
-        let bytes = serde_json::to_vec(&request).expect("request json");
-        assert_eq!(decode_provider_request(&bytes).expect("decode"), request);
+        let uri = KnowledgeUri::new(id, "docs/a").expect("uri");
+        let request = ProviderRequest::read(uri);
+        let value = serde_json::to_value(request).expect("request json");
+        assert_eq!(value["uri"], "okf://demo/docs/a");
+    }
 
-        let response = ProviderResponse::success(&vec!["a", "b"]).expect("response");
-        let values: Vec<String> = response.into_typed().expect("payload");
-        assert_eq!(values, vec!["a", "b"]);
+    #[test]
+    fn language_neutral_catalog_decodes() {
+        let response: ProviderResponse = serde_json::from_value(serde_json::json!({
+            "ok": true,
+            "data": {
+                "library": "demo",
+                "entries": [{
+                    "id": "a",
+                    "title": "A",
+                    "description": null,
+                    "uri": "okf://demo/a",
+                    "terms": ["alpha"]
+                }]
+            }
+        }))
+        .expect("response");
+        let catalog = response.into_catalog().expect("catalog");
+        assert_eq!(catalog.entries[0].uri.to_string(), "okf://demo/a");
     }
 }
