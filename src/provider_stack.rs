@@ -65,7 +65,7 @@ impl ProviderStack {
         self.providers
             .iter()
             .find(|provider| provider.capabilities().contains(&capability))
-            .map(AsRef::as_ref)
+            .map(|provider| provider.as_ref())
             .ok_or(LibraryError::UnsupportedCapability(capability))
     }
 }
