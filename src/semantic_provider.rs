@@ -90,7 +90,7 @@ impl std::fmt::Debug for VectorSemanticQueryProvider {
 }
 
 impl VectorSemanticQueryProvider {
-    /// Creates a semantic provider and validates vector dimensionality.
+    /// Creates a semantic provider and validates vector dimensionality and values.
     pub fn new(
         id: impl Into<String>,
         embedder: Arc<dyn EmbeddingProvider>,
@@ -108,6 +108,15 @@ impl VectorSemanticQueryProvider {
                     "semantic index contains inconsistent vector dimensions".to_owned(),
                 ));
             }
+        }
+        if entries
+            .iter()
+            .flat_map(|entry| entry.vector.iter())
+            .any(|value| !value.is_finite())
+        {
+            return Err(LibraryError::Provider(
+                "semantic index contains non-finite vector values".to_owned(),
+            ));
         }
         Ok(Self {
             id: id.into(),
@@ -256,5 +265,25 @@ mod tests {
             .query(&library, &LibraryQuery::new("alpha").limit(1))
             .expect("query");
         assert_eq!(result.hits[0].uri.path(), "alpha");
+    }
+
+    #[test]
+    fn semantic_provider_rejects_non_finite_index_values() {
+        let library = LibraryId::parse("demo").expect("library");
+        let embedder = Arc::new(FnEmbeddingProvider::new("test", |_text: &str| {
+            Ok(vec![1.0])
+        }));
+        let result = VectorSemanticQueryProvider::new(
+            "vector",
+            embedder,
+            vec![SemanticEntry {
+                uri: KnowledgeUri::new(library, "bad").expect("uri"),
+                title: None,
+                snippet: None,
+                vector: vec![f32::NAN],
+                metadata: BTreeMap::new(),
+            }],
+        );
+        assert!(result.is_err());
     }
 }
