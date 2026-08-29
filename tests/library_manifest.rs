@@ -25,7 +25,10 @@ query:
     let manifest = LibraryPackageManifest::parse_yaml(yaml).unwrap();
     let catalog = manifest.runtime_catalog().unwrap();
     assert_eq!(catalog.entries.len(), 1);
-    assert_eq!(catalog.entries[0].uri.to_string(), "okf://mcx/interfaces/xcap");
+    assert_eq!(
+        catalog.entries[0].uri.to_string(),
+        "okf://mcx/interfaces/xcap"
+    );
     assert_eq!(manifest.query.preferred.as_deref(), Some("semantic"));
     assert!(manifest.query.capabilities.contains("agentic"));
 }
@@ -58,7 +61,8 @@ query:
     let package = LibraryPackageManifest::load(directory.path()).unwrap();
     let bundle = BundleParser::default().parse_dir(directory.path()).unwrap();
     let runtime_manifest = package.runtime_manifest(None).unwrap();
-    let provider = BundleLibraryProvider::new(bundle).with_catalog(package.runtime_catalog().unwrap());
+    let provider =
+        BundleLibraryProvider::new(bundle).with_catalog(package.runtime_catalog().unwrap());
     let catalog = provider.catalog(&runtime_manifest.id).unwrap();
     assert_eq!(catalog.entries.len(), 1);
     assert_eq!(catalog.entries[0].id, "xcap");

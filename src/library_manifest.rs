@@ -7,7 +7,9 @@ use std::path::Path;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::library::{CatalogEntry, KnowledgeUri, LibraryCatalog, LibraryId, LibraryManifest, LibrarySource};
+use crate::library::{
+    CatalogEntry, KnowledgeUri, LibraryCatalog, LibraryId, LibraryManifest, LibrarySource,
+};
 
 /// Canonical Library package manifest filename.
 pub const LIBRARY_MANIFEST_FILENAME: &str = "okf-library.yaml";
@@ -62,10 +64,11 @@ pub struct LibraryPackageManifest {
 impl LibraryPackageManifest {
     /// Parses a manifest from YAML text.
     pub fn parse_yaml(source: &str) -> Result<Self, LibraryManifestError> {
-        let manifest = yaml_serde::from_str::<Self>(source).map_err(|error| LibraryManifestError::Parse {
-            path: LIBRARY_MANIFEST_FILENAME.to_owned(),
-            message: error.to_string(),
-        })?;
+        let manifest =
+            yaml_serde::from_str::<Self>(source).map_err(|error| LibraryManifestError::Parse {
+                path: LIBRARY_MANIFEST_FILENAME.to_owned(),
+                message: error.to_string(),
+            })?;
         manifest.validate()?;
         Ok(manifest)
     }
@@ -77,10 +80,11 @@ impl LibraryPackageManifest {
             path: path.display().to_string(),
             source,
         })?;
-        let manifest = yaml_serde::from_str::<Self>(&source).map_err(|error| LibraryManifestError::Parse {
-            path: path.display().to_string(),
-            message: error.to_string(),
-        })?;
+        let manifest =
+            yaml_serde::from_str::<Self>(&source).map_err(|error| LibraryManifestError::Parse {
+                path: path.display().to_string(),
+                message: error.to_string(),
+            })?;
         manifest.validate()?;
         Ok(manifest)
     }
@@ -93,7 +97,9 @@ impl LibraryPackageManifest {
     /// Validates portable fields without accessing provider state.
     pub fn validate(&self) -> Result<(), LibraryManifestError> {
         if self.schema_version != "1" {
-            return Err(LibraryManifestError::UnsupportedSchema(self.schema_version.clone()));
+            return Err(LibraryManifestError::UnsupportedSchema(
+                self.schema_version.clone(),
+            ));
         }
         let id = LibraryId::parse(self.id.clone())
             .map_err(|error| LibraryManifestError::Invalid(error.to_string()))?;
@@ -142,7 +148,10 @@ impl LibraryPackageManifest {
                 })
             })
             .collect::<Result<Vec<_>, LibraryManifestError>>()?;
-        Ok(LibraryCatalog { library: id, entries })
+        Ok(LibraryCatalog {
+            library: id,
+            entries,
+        })
     }
 }
 

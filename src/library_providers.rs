@@ -38,7 +38,8 @@ pub trait QueryProvider: Send + Sync {
     fn provider_id(&self) -> &str;
 
     /// Executes a query using provider-specific retrieval intelligence.
-    fn query(&self, library: &LibraryId, query: &LibraryQuery) -> LibraryResult<LibraryQueryResult>;
+    fn query(&self, library: &LibraryId, query: &LibraryQuery)
+    -> LibraryResult<LibraryQueryResult>;
 }
 
 /// Refreshes provider-derived state such as caches, remote metadata, or indexes.
@@ -68,10 +69,22 @@ impl std::fmt::Debug for CompositeLibraryProvider {
         formatter
             .debug_struct("CompositeLibraryProvider")
             .field("id", &self.id)
-            .field("catalog", &self.catalog.as_ref().map(|provider| provider.provider_id()))
-            .field("content", &self.content.as_ref().map(|provider| provider.provider_id()))
-            .field("query", &self.query.as_ref().map(|provider| provider.provider_id()))
-            .field("refresh", &self.refresh.as_ref().map(|provider| provider.provider_id()))
+            .field(
+                "catalog",
+                &self.catalog.as_ref().map(|provider| provider.provider_id()),
+            )
+            .field(
+                "content",
+                &self.content.as_ref().map(|provider| provider.provider_id()),
+            )
+            .field(
+                "query",
+                &self.query.as_ref().map(|provider| provider.provider_id()),
+            )
+            .field(
+                "refresh",
+                &self.refresh.as_ref().map(|provider| provider.provider_id()),
+            )
             .finish()
     }
 }
@@ -154,7 +167,11 @@ impl LibraryProvider for CompositeLibraryProvider {
             .read(uri)
     }
 
-    fn query(&self, library: &LibraryId, query: &LibraryQuery) -> LibraryResult<LibraryQueryResult> {
+    fn query(
+        &self,
+        library: &LibraryId,
+        query: &LibraryQuery,
+    ) -> LibraryResult<LibraryQueryResult> {
         self.query
             .as_ref()
             .expect("Runtime checks declared Query capability before dispatch")
