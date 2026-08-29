@@ -148,25 +148,13 @@ mod tests {
             ProjectContextState::Uninitialized
         );
         assert_eq!(
-            ProjectContextStatus::evaluate(
-                "p",
-                Some("a".into()),
-                Some("a".into()),
-                vec![],
-                &[]
-            )
-            .state,
+            ProjectContextStatus::evaluate("p", Some("a".into()), Some("a".into()), vec![], &[])
+                .state,
             ProjectContextState::Valid
         );
         assert_eq!(
-            ProjectContextStatus::evaluate(
-                "p",
-                Some("a".into()),
-                Some("b".into()),
-                vec![],
-                &[]
-            )
-            .state,
+            ProjectContextStatus::evaluate("p", Some("a".into()), Some("b".into()), vec![], &[])
+                .state,
             ProjectContextState::Dirty
         );
         assert_eq!(
