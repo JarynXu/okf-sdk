@@ -11,6 +11,7 @@ pub mod graph;
 pub mod library;
 pub mod library_manifest;
 pub mod library_providers;
+pub mod library_sources;
 pub mod model;
 pub mod parser;
 pub mod providers;
@@ -32,6 +33,7 @@ pub use library_manifest::{
 pub use library_providers::{
     CatalogProvider, CompositeLibraryProvider, ContentProvider, QueryProvider, RefreshProvider,
 };
+pub use library_sources::{LibrarySourceResolver, LibrarySourceResolvers};
 pub use model::{Bundle, Document, DocumentId, InvalidDocumentId, Metadata, Reference};
 pub use parser::{BundleParser, ParserOptions, parse_document};
 pub use providers::{BundleLibraryProvider, VirtualLibraryProvider};
