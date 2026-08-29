@@ -14,12 +14,22 @@ use crate::retrieval::SearchQuery;
 #[derive(Clone, Debug)]
 pub struct BundleLibraryProvider {
     bundle: Bundle,
+    catalog: Option<LibraryCatalog>,
 }
 
 impl BundleLibraryProvider {
-    /// Creates a provider for an OKF bundle.
+    /// Creates a provider for an OKF bundle with a catalog derived from document metadata.
     pub fn new(bundle: Bundle) -> Self {
-        Self { bundle }
+        Self {
+            bundle,
+            catalog: None,
+        }
+    }
+
+    /// Uses a Library-owned semantic catalog instead of deriving one document-per-entry.
+    pub fn with_catalog(mut self, catalog: LibraryCatalog) -> Self {
+        self.catalog = Some(catalog);
+        self
     }
 
     /// Returns the backing bundle.
@@ -45,6 +55,16 @@ impl LibraryProvider for BundleLibraryProvider {
     }
 
     fn catalog(&self, library: &LibraryId) -> LibraryResult<LibraryCatalog> {
+        if let Some(catalog) = &self.catalog {
+            if &catalog.library != library {
+                return Err(LibraryError::Provider(format!(
+                    "catalog belongs to '{}' but provider is mounted as '{}'",
+                    catalog.library, library
+                )));
+            }
+            return Ok(catalog.clone());
+        }
+
         let entries = self
             .bundle
             .documents()
