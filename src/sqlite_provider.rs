@@ -4,7 +4,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 use std::sync::Mutex;
 
-use rusqlite::{Connection, OptionalExtension, params};
+use rusqlite::{Connection, OpenFlags, OptionalExtension, params};
 
 use crate::library::{
     CatalogEntry, KnowledgeNode, KnowledgeNodeKind, KnowledgeUri, LibraryCapability,
@@ -30,7 +30,7 @@ impl std::fmt::Debug for SqliteLibraryProvider {
 }
 
 impl SqliteLibraryProvider {
-    /// Opens an existing SQLite knowledge database.
+    /// Opens an existing SQLite knowledge database read-only.
     ///
     /// The provider expects `okf_nodes(path TEXT PRIMARY KEY, title TEXT, content TEXT NOT NULL)`.
     /// An optional `okf_catalog(id, title, description, path, terms_json)` table supplies curated
@@ -40,7 +40,11 @@ impl SqliteLibraryProvider {
         library: LibraryId,
         path: impl AsRef<Path>,
     ) -> LibraryResult<Self> {
-        let connection = Connection::open(path).map_err(sqlite_error)?;
+        let connection = Connection::open_with_flags(
+            path,
+            OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_URI,
+        )
+        .map_err(sqlite_error)?;
         let provider = Self {
             id: id.into(),
             library,
@@ -50,7 +54,7 @@ impl SqliteLibraryProvider {
         Ok(provider)
     }
 
-    /// Creates the reference read-model schema in an existing connection.
+    /// Creates the reference read-model schema in an existing writable connection.
     pub fn initialize_schema(connection: &Connection) -> LibraryResult<()> {
         connection
             .execute_batch(
@@ -148,8 +152,9 @@ impl LibraryProvider for SqliteLibraryProvider {
             let mut entries = Vec::new();
             for row in rows {
                 let (id, title, description, path, terms_json) = row.map_err(sqlite_error)?;
-                let terms = serde_json::from_str::<BTreeSet<String>>(&terms_json)
-                    .map_err(|error| LibraryError::Provider(format!("invalid catalog terms_json: {error}")))?;
+                let terms = serde_json::from_str::<BTreeSet<String>>(&terms_json).map_err(|error| {
+                    LibraryError::Provider(format!("invalid catalog terms_json: {error}"))
+                })?;
                 entries.push(CatalogEntry {
                     id,
                     title,
@@ -164,7 +169,9 @@ impl LibraryProvider for SqliteLibraryProvider {
                 .prepare("SELECT path, COALESCE(title, path) FROM okf_nodes ORDER BY path")
                 .map_err(sqlite_error)?;
             let rows = statement
-                .query_map([], |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)))
+                .query_map([], |row| {
+                    Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+                })
                 .map_err(sqlite_error)?;
             let mut entries = Vec::new();
             for row in rows {
