@@ -14,6 +14,7 @@ pub mod library_providers;
 pub mod library_sources;
 pub mod model;
 pub mod parser;
+pub mod project_context;
 pub mod providers;
 pub mod retrieval;
 pub mod validator;
@@ -36,6 +37,9 @@ pub use library_providers::{
 pub use library_sources::{LibrarySourceResolver, LibrarySourceResolvers};
 pub use model::{Bundle, Document, DocumentId, InvalidDocumentId, Metadata, Reference};
 pub use parser::{BundleParser, ParserOptions, parse_document};
+pub use project_context::{
+    ProjectContextImpactRule, ProjectContextState, ProjectContextStatus, impacted_topics,
+};
 pub use providers::{BundleLibraryProvider, VirtualLibraryProvider};
 pub use retrieval::{MatchField, SearchHit, SearchQuery};
 pub use validator::{Severity, ValidationIssue, ValidationOptions, ValidationReport, Validator};
