@@ -16,7 +16,7 @@ pub enum ProjectContextState {
     Uninitialized,
     /// The validated repository revision matches the authoritative current revision.
     Valid,
-    /// The repository moved beyond the validated revision and requires incremental revalidation.
+    /// Repository content differs from the validated checkpoint and requires revalidation.
     Dirty,
     /// The current authoritative revision cannot be established safely.
     Unknown,
@@ -52,7 +52,7 @@ pub struct ProjectContextStatus {
     pub current_revision: Option<String>,
     /// Derived freshness state.
     pub state: ProjectContextState,
-    /// Repository-relative changed paths since the validated revision.
+    /// Repository-relative committed or working-tree paths changed since validation.
     pub changed_paths: Vec<String>,
     /// Knowledge topics invalidated or requiring revalidation.
     pub impacted_topics: Vec<String>,
@@ -70,7 +70,9 @@ impl ProjectContextStatus {
         let state = match (&validated_revision, &current_revision) {
             (None, _) => ProjectContextState::Uninitialized,
             (Some(_), None) => ProjectContextState::Unknown,
-            (Some(validated), Some(current)) if validated == current => ProjectContextState::Valid,
+            (Some(validated), Some(current)) if validated == current && changed_paths.is_empty() => {
+                ProjectContextState::Valid
+            }
             (Some(_), Some(_)) => ProjectContextState::Dirty,
         };
         let impacted_topics = impacted_topics(&changed_paths, rules);
@@ -151,6 +153,17 @@ mod tests {
             ProjectContextStatus::evaluate("p", Some("a".into()), Some("a".into()), vec![], &[])
                 .state,
             ProjectContextState::Valid
+        );
+        assert_eq!(
+            ProjectContextStatus::evaluate(
+                "p",
+                Some("a".into()),
+                Some("a".into()),
+                vec!["src/lib.rs".into()],
+                &[]
+            )
+            .state,
+            ProjectContextState::Dirty
         );
         assert_eq!(
             ProjectContextStatus::evaluate("p", Some("a".into()), Some("b".into()), vec![], &[])
