@@ -7,8 +7,6 @@ use std::process::{Command, ExitStatus, Stdio};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use serde::de::DeserializeOwned;
-
 use crate::library::{
     KnowledgeNode, KnowledgeUri, LibraryCapability, LibraryCatalog, LibraryError, LibraryId,
     LibraryProvider, LibraryQuery, LibraryQueryResult, LibraryResult,
@@ -102,7 +100,7 @@ impl ProcessLibraryProvider {
         }
     }
 
-    fn invoke<T: DeserializeOwned>(&self, request: &ProviderRequest) -> LibraryResult<T> {
+    fn invoke(&self, request: &ProviderRequest) -> LibraryResult<ProviderResponse> {
         let mut command = Command::new(&self.command);
         command
             .args(&self.args)
@@ -162,8 +160,7 @@ impl ProcessLibraryProvider {
             )));
         }
 
-        let response: ProviderResponse = decode_provider_response(&stdout)?;
-        response.into_typed()
+        decode_provider_response(&stdout)
     }
 }
 
@@ -178,17 +175,20 @@ impl LibraryProvider for ProcessLibraryProvider {
 
     fn catalog(&self, library: &LibraryId) -> LibraryResult<LibraryCatalog> {
         self.ensure_library(library)?;
-        self.invoke(&ProviderRequest::catalog(library.clone()))
+        self.invoke(&ProviderRequest::catalog(library.clone()))?
+            .into_catalog()
     }
 
     fn list(&self, library: &LibraryId, path: &str) -> LibraryResult<Vec<KnowledgeNode>> {
         self.ensure_library(library)?;
-        self.invoke(&ProviderRequest::list(library.clone(), path))
+        self.invoke(&ProviderRequest::list(library.clone(), path))?
+            .into_nodes()
     }
 
     fn read(&self, uri: &KnowledgeUri) -> LibraryResult<String> {
         self.ensure_library(uri.library())?;
-        self.invoke(&ProviderRequest::read(uri.clone()))
+        self.invoke(&ProviderRequest::read(uri.clone()))?
+            .into_typed()
     }
 
     fn query(
@@ -197,11 +197,13 @@ impl LibraryProvider for ProcessLibraryProvider {
         query: &LibraryQuery,
     ) -> LibraryResult<LibraryQueryResult> {
         self.ensure_library(library)?;
-        self.invoke(&ProviderRequest::query(library.clone(), query.clone()))
+        self.invoke(&ProviderRequest::query(library.clone(), query.clone()))?
+            .into_query_result()
     }
 
     fn refresh(&self) -> LibraryResult<()> {
-        self.invoke(&ProviderRequest::refresh(self.library.clone()))
+        self.invoke(&ProviderRequest::refresh(self.library.clone()))?
+            .into_typed()
     }
 }
 
