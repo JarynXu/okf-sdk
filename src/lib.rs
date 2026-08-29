@@ -10,6 +10,7 @@ pub mod error;
 pub mod graph;
 pub mod library;
 pub mod library_manifest;
+pub mod library_providers;
 pub mod model;
 pub mod parser;
 pub mod providers;
@@ -27,6 +28,9 @@ pub use library::{
 pub use library_manifest::{
     LIBRARY_MANIFEST_FILENAME, LibraryCatalogDeclaration, LibraryManifestError,
     LibraryPackageManifest, LibraryQueryDeclaration,
+};
+pub use library_providers::{
+    CatalogProvider, CompositeLibraryProvider, ContentProvider, QueryProvider, RefreshProvider,
 };
 pub use model::{Bundle, Document, DocumentId, InvalidDocumentId, Metadata, Reference};
 pub use parser::{BundleParser, ParserOptions, parse_document};
