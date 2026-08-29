@@ -14,11 +14,13 @@ use crate::library::{
     KnowledgeNode, KnowledgeUri, LibraryCapability, LibraryCatalog, LibraryError, LibraryId,
     LibraryProvider, LibraryQuery, LibraryQueryResult, LibraryResult,
 };
-use crate::provider_protocol::{
-    ProviderRequest, ProviderResponse, decode_provider_response,
-};
+use crate::provider_protocol::{ProviderRequest, ProviderResponse, decode_provider_response};
 
 /// Executes Library capabilities through the `okf-provider/1` process protocol.
+///
+/// The child starts with a deliberately small environment. Only process-discovery variables needed
+/// for normal cross-platform execution are inherited by default; deployments must explicitly add
+/// credentials or other sensitive values with [`Self::env`] or [`Self::inherit_environment`].
 #[derive(Clone, Debug)]
 pub struct ProcessLibraryProvider {
     id: String,
@@ -45,7 +47,7 @@ impl ProcessLibraryProvider {
             command: command.into(),
             args: Vec::new(),
             cwd: None,
-            env: BTreeMap::new(),
+            env: minimal_process_environment(),
             capabilities: capabilities.into_iter().collect(),
             timeout: Duration::from_secs(30),
         }
@@ -66,6 +68,21 @@ impl ProcessLibraryProvider {
     /// Adds one explicitly authorized environment variable.
     pub fn env(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
         self.env.insert(name.into(), value.into());
+        self
+    }
+
+    /// Explicitly inherits selected variables from the host environment when present.
+    pub fn inherit_environment(
+        mut self,
+        names: impl IntoIterator<Item = impl AsRef<str>>,
+    ) -> Self {
+        for name in names {
+            let name = name.as_ref();
+            if let Some(value) = std::env::var_os(name) {
+                self.env
+                    .insert(name.to_owned(), value.to_string_lossy().into_owned());
+            }
+        }
         self
     }
 
@@ -93,9 +110,10 @@ impl ProcessLibraryProvider {
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
+            .env_clear()
+            .envs(&self.env)
             .env("OKF_LIBRARY_ID", self.library.as_str())
-            .env("OKF_PROVIDER_ID", &self.id)
-            .envs(&self.env);
+            .env("OKF_PROVIDER_ID", &self.id);
         if let Some(cwd) = &self.cwd {
             command.current_dir(cwd);
         }
@@ -199,6 +217,24 @@ impl LibraryProvider for ProcessLibraryProvider {
     fn refresh(&self) -> LibraryResult<()> {
         self.invoke(&ProviderRequest::refresh(self.library.clone()))
     }
+}
+
+fn minimal_process_environment() -> BTreeMap<String, String> {
+    let mut env = BTreeMap::new();
+    for name in [
+        "PATH",
+        "PATHEXT",
+        "SystemRoot",
+        "WINDIR",
+        "TEMP",
+        "TMP",
+        "TMPDIR",
+    ] {
+        if let Some(value) = std::env::var_os(name) {
+            env.insert(name.to_owned(), value.to_string_lossy().into_owned());
+        }
+    }
+    env
 }
 
 fn read_all(mut reader: impl Read) -> LibraryResult<Vec<u8>> {
