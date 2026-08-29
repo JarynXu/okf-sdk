@@ -1,6 +1,5 @@
 //! Agent-backed semantic query adapter.
 
-use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use crate::library::{
@@ -74,9 +73,6 @@ impl QueryProvider for AgentQueryProvider {
             "agent_executor".to_owned(),
             self.executor.executor_id().to_owned(),
         );
-        if result.provenance.is_empty() {
-            result.provenance = BTreeMap::new();
-        }
         Ok(result)
     }
 }
