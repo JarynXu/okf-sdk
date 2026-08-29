@@ -6,6 +6,7 @@
 
 #![forbid(unsafe_code)]
 
+pub mod agent_provider;
 pub mod error;
 pub mod graph;
 #[cfg(feature = "http-provider")]
@@ -28,6 +29,7 @@ pub mod semantic_provider;
 pub mod sqlite_provider;
 pub mod validator;
 
+pub use agent_provider::{AgentQueryExecutor, AgentQueryProvider};
 pub use error::{Error, Result};
 pub use graph::KnowledgeGraph;
 #[cfg(feature = "http-provider")]
