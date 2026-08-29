@@ -70,7 +70,9 @@ impl ProjectContextStatus {
         let state = match (&validated_revision, &current_revision) {
             (None, _) => ProjectContextState::Uninitialized,
             (Some(_), None) => ProjectContextState::Unknown,
-            (Some(validated), Some(current)) if validated == current && changed_paths.is_empty() => {
+            (Some(validated), Some(current))
+                if validated == current && changed_paths.is_empty() =>
+            {
                 ProjectContextState::Valid
             }
             (Some(_), Some(_)) => ProjectContextState::Dirty,
