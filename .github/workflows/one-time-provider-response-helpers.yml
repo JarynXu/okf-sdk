@@ -27,10 +27,8 @@ jobs:
 
           path = Path("src/provider_protocol.rs")
           text = path.read_text()
-          anchor = '''    /// Creates a failed response.
-          pub fn failure(code: impl Into<String>, message: impl Into<String>) -> Self {
-          '''
-          helpers = '''    /// Encodes a Library catalog using the language-neutral wire representation.
+          anchor = "    /// Creates a failed response.\n"
+          helpers = r'''    /// Encodes a Library catalog using the language-neutral wire representation.
               ///
               /// Canonical knowledge URIs are emitted as `okf://...` strings rather than the Rust
               /// SDK's internal struct representation.
@@ -40,11 +38,11 @@ jobs:
                       .iter()
                       .map(|entry| {
                           serde_json::json!({
-                              "id": entry.id,
-                              "title": entry.title,
-                              "description": entry.description,
+                              "id": &entry.id,
+                              "title": &entry.title,
+                              "description": &entry.description,
                               "uri": entry.uri.to_string(),
-                              "terms": entry.terms,
+                              "terms": &entry.terms,
                           })
                       })
                       .collect::<Vec<_>>();
@@ -62,7 +60,7 @@ jobs:
                           serde_json::json!({
                               "uri": node.uri.to_string(),
                               "kind": node.kind,
-                              "title": node.title,
+                              "title": &node.title,
                               "virtual_node": node.virtual_node,
                           })
                       })
@@ -78,29 +76,27 @@ jobs:
                       .map(|hit| {
                           serde_json::json!({
                               "uri": hit.uri.to_string(),
-                              "title": hit.title,
-                              "snippet": hit.snippet,
+                              "title": &hit.title,
+                              "snippet": &hit.snippet,
                               "score": hit.score,
-                              "metadata": hit.metadata,
+                              "metadata": &hit.metadata,
                           })
                       })
                       .collect::<Vec<_>>();
                   Self::success(&serde_json::json!({
-                      "answer": result.answer,
+                      "answer": &result.answer,
                       "hits": hits,
-                      "provider": result.provider,
-                      "strategy": result.strategy,
-                      "provenance": result.provenance,
+                      "provider": &result.provider,
+                      "strategy": &result.strategy,
+                      "provenance": &result.provenance,
                   }))
               }
 
-              /// Creates a failed response.
-              pub fn failure(code: impl Into<String>, message: impl Into<String>) -> Self {
           '''
           if "pub fn success_catalog(" not in text:
               if anchor not in text:
                   raise SystemExit("response helper anchor not found")
-              text = text.replace(anchor, helpers, 1)
+              text = text.replace(anchor, helpers + anchor, 1)
 
           if "fn domain_response_helpers_round_trip()" not in text:
               marker = "\n}\n"
