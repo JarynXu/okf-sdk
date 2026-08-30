@@ -129,6 +129,70 @@ impl ProviderResponse {
         })
     }
 
+    /// Encodes a Library catalog using the language-neutral wire representation.
+    ///
+    /// Canonical knowledge URIs are emitted as `okf://...` strings rather than the Rust
+    /// SDK's internal struct representation.
+    pub fn success_catalog(catalog: &LibraryCatalog) -> LibraryResult<Self> {
+        let entries = catalog
+            .entries
+            .iter()
+            .map(|entry| {
+                serde_json::json!({
+                    "id": &entry.id,
+                    "title": &entry.title,
+                    "description": &entry.description,
+                    "uri": entry.uri.to_string(),
+                    "terms": &entry.terms,
+                })
+            })
+            .collect::<Vec<_>>();
+        Self::success(&serde_json::json!({
+            "library": catalog.library.as_str(),
+            "entries": entries,
+        }))
+    }
+
+    /// Encodes logical knowledge nodes using canonical URI strings.
+    pub fn success_nodes(nodes: &[KnowledgeNode]) -> LibraryResult<Self> {
+        let nodes = nodes
+            .iter()
+            .map(|node| {
+                serde_json::json!({
+                    "uri": node.uri.to_string(),
+                    "kind": node.kind,
+                    "title": &node.title,
+                    "virtual_node": node.virtual_node,
+                })
+            })
+            .collect::<Vec<_>>();
+        Self::success(&nodes)
+    }
+
+    /// Encodes a query result using the language-neutral provider wire representation.
+    pub fn success_query_result(result: &LibraryQueryResult) -> LibraryResult<Self> {
+        let hits = result
+            .hits
+            .iter()
+            .map(|hit| {
+                serde_json::json!({
+                    "uri": hit.uri.to_string(),
+                    "title": &hit.title,
+                    "snippet": &hit.snippet,
+                    "score": hit.score,
+                    "metadata": &hit.metadata,
+                })
+            })
+            .collect::<Vec<_>>();
+        Self::success(&serde_json::json!({
+            "answer": &result.answer,
+            "hits": hits,
+            "provider": &result.provider,
+            "strategy": &result.strategy,
+            "provenance": &result.provenance,
+        }))
+    }
+
     /// Creates a failed response.
     pub fn failure(code: impl Into<String>, message: impl Into<String>) -> Self {
         Self {
@@ -355,5 +419,57 @@ mod tests {
         .expect("response");
         let catalog = response.into_catalog().expect("catalog");
         assert_eq!(catalog.entries[0].uri.to_string(), "okf://demo/a");
+    }
+
+    #[test]
+    fn domain_response_helpers_round_trip() {
+        let library = LibraryId::parse("demo").expect("library");
+        let uri = KnowledgeUri::new(library.clone(), "current/architecture").expect("uri");
+        let catalog = LibraryCatalog {
+            library: library.clone(),
+            entries: vec![CatalogEntry {
+                id: "architecture".to_owned(),
+                title: "Architecture".to_owned(),
+                description: Some("Current architecture".to_owned()),
+                uri: uri.clone(),
+                terms: ["architecture".to_owned()].into_iter().collect(),
+            }],
+        };
+        let decoded_catalog = ProviderResponse::success_catalog(&catalog)
+            .expect("catalog response")
+            .into_catalog()
+            .expect("decoded catalog");
+        assert_eq!(decoded_catalog, catalog);
+
+        let nodes = vec![KnowledgeNode {
+            uri: uri.clone(),
+            kind: KnowledgeNodeKind::Content,
+            title: Some("Architecture".to_owned()),
+            virtual_node: true,
+        }];
+        let decoded_nodes = ProviderResponse::success_nodes(&nodes)
+            .expect("node response")
+            .into_nodes()
+            .expect("decoded nodes");
+        assert_eq!(decoded_nodes, nodes);
+
+        let result = LibraryQueryResult {
+            answer: Some("Use the architecture topic.".to_owned()),
+            hits: vec![LibraryQueryHit {
+                uri,
+                title: Some("Architecture".to_owned()),
+                snippet: Some("Current architecture".to_owned()),
+                score: Some(1.0),
+                metadata: BTreeMap::new(),
+            }],
+            provider: "project-context".to_owned(),
+            strategy: QueryStrategy::Lexical,
+            provenance: BTreeMap::new(),
+        };
+        let decoded_result = ProviderResponse::success_query_result(&result)
+            .expect("query response")
+            .into_query_result()
+            .expect("decoded query result");
+        assert_eq!(decoded_result, result);
     }
 }
