@@ -1,6 +1,6 @@
 //! Portable `okf-library.yaml` package manifest.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::Path;
 
@@ -42,9 +42,9 @@ pub enum LibraryManifestError {
 }
 
 /// Portable package declaration read from `okf-library.yaml`.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct LibraryPackageManifest {
-    /// Manifest schema version. The first stable draft is `1`.
+    /// Manifest schema version. The current interoperable profile is `1`.
     pub schema_version: String,
     /// Stable Library identifier.
     pub id: String,
@@ -59,6 +59,9 @@ pub struct LibraryPackageManifest {
     /// Optional retrieval guidance for hosts and query providers.
     #[serde(default)]
     pub query: LibraryQueryDeclaration,
+    /// Optional concrete provider deployments resolved and authorized by the host.
+    #[serde(default)]
+    pub providers: Vec<LibraryProviderDeclaration>,
 }
 
 impl LibraryPackageManifest {
@@ -94,7 +97,7 @@ impl LibraryPackageManifest {
         root.as_ref().join(LIBRARY_MANIFEST_FILENAME).is_file()
     }
 
-    /// Validates portable fields without accessing provider state.
+    /// Validates portable fields without activating provider code or network access.
     pub fn validate(&self) -> Result<(), LibraryManifestError> {
         if self.schema_version != "1" {
             return Err(LibraryManifestError::UnsupportedSchema(
@@ -110,6 +113,44 @@ impl LibraryPackageManifest {
                 return Err(LibraryManifestError::Invalid(
                     "catalog entry id and title must be non-empty".to_owned(),
                 ));
+            }
+        }
+
+        let mut provider_ids = BTreeSet::new();
+        for provider in &self.providers {
+            if provider.id.trim().is_empty() {
+                return Err(LibraryManifestError::Invalid(
+                    "provider id must be non-empty".to_owned(),
+                ));
+            }
+            if provider.kind.trim().is_empty() {
+                return Err(LibraryManifestError::Invalid(format!(
+                    "provider '{}' kind must be non-empty",
+                    provider.id
+                )));
+            }
+            if !provider_ids.insert(provider.id.as_str()) {
+                return Err(LibraryManifestError::Invalid(format!(
+                    "duplicate provider id '{}'",
+                    provider.id
+                )));
+            }
+            if provider.capabilities.is_empty() {
+                return Err(LibraryManifestError::Invalid(format!(
+                    "provider '{}' must declare at least one capability",
+                    provider.id
+                )));
+            }
+            for capability in &provider.capabilities {
+                if !matches!(
+                    capability.as_str(),
+                    "list" | "read" | "catalog" | "query" | "refresh" | "maintain"
+                ) {
+                    return Err(LibraryManifestError::Invalid(format!(
+                        "provider '{}' declares unknown capability '{}'",
+                        provider.id, capability
+                    )));
+                }
             }
         }
         Ok(())
@@ -187,4 +228,50 @@ pub struct LibraryQueryDeclaration {
     /// Domain-specific routing/search hints for a query provider.
     #[serde(default)]
     pub hints: Vec<String>,
+}
+
+/// One concrete provider deployment declared by a Library package.
+///
+/// The declaration is inert data. Runtime policy decides whether a provider kind may execute,
+/// access the network, or receive credentials.
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+pub struct LibraryProviderDeclaration {
+    /// Stable deployment-local provider identity.
+    pub id: String,
+    /// Adapter kind resolved by the host, such as `process`, `http`, `s3`, or `sqlite`.
+    pub kind: String,
+    /// Library capabilities expected from the resolved adapter.
+    #[serde(default)]
+    pub capabilities: BTreeSet<String>,
+    /// Adapter-specific non-secret configuration.
+    #[serde(default)]
+    pub config: BTreeMap<String, serde_json::Value>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn schema_one_accepts_provider_deployments_without_breaking_old_manifests() {
+        let old =
+            LibraryPackageManifest::parse_yaml("schema_version: \"1\"\nid: demo\nname: Demo\n")
+                .expect("old manifest");
+        assert!(old.providers.is_empty());
+
+        let deployed = LibraryPackageManifest::parse_yaml(
+            "schema_version: \"1\"\nid: demo\nname: Demo\nproviders:\n  - id: dynamic\n    kind: process\n    capabilities: [read, query]\n    config:\n      command: ./provider\n",
+        )
+        .expect("provider manifest");
+        assert_eq!(deployed.providers[0].kind, "process");
+    }
+
+    #[test]
+    fn rejects_duplicate_provider_ids() {
+        let error = LibraryPackageManifest::parse_yaml(
+            "schema_version: \"1\"\nid: demo\nname: Demo\nproviders:\n  - id: p\n    kind: process\n    capabilities: [read]\n  - id: p\n    kind: http\n    capabilities: [query]\n",
+        )
+        .expect_err("duplicate ids");
+        assert!(error.to_string().contains("duplicate provider id"));
+    }
 }
