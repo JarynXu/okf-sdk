@@ -83,11 +83,13 @@ impl LibraryProvider for ProviderStack {
     }
 
     fn catalog(&self, library: &LibraryId) -> LibraryResult<LibraryCatalog> {
-        self.provider_for(LibraryCapability::Catalog)?.catalog(library)
+        self.provider_for(LibraryCapability::Catalog)?
+            .catalog(library)
     }
 
     fn list(&self, library: &LibraryId, path: &str) -> LibraryResult<Vec<KnowledgeNode>> {
-        self.provider_for(LibraryCapability::List)?.list(library, path)
+        self.provider_for(LibraryCapability::List)?
+            .list(library, path)
     }
 
     fn read(&self, uri: &KnowledgeUri) -> LibraryResult<String> {
@@ -99,7 +101,8 @@ impl LibraryProvider for ProviderStack {
         library: &LibraryId,
         query: &LibraryQuery,
     ) -> LibraryResult<LibraryQueryResult> {
-        self.provider_for(LibraryCapability::Query)?.query(library, query)
+        self.provider_for(LibraryCapability::Query)?
+            .query(library, query)
     }
 
     fn refresh(&self) -> LibraryResult<()> {

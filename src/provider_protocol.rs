@@ -148,22 +148,22 @@ impl ProviderResponse {
 
     /// Decodes a language-neutral catalog payload into SDK domain values.
     pub fn into_catalog(self) -> LibraryResult<LibraryCatalog> {
-        let wire: WireLibraryCatalog = serde_json::from_value(self.success_data()?)
-            .map_err(protocol_error)?;
+        let wire: WireLibraryCatalog =
+            serde_json::from_value(self.success_data()?).map_err(protocol_error)?;
         wire.try_into()
     }
 
     /// Decodes language-neutral knowledge nodes into SDK domain values.
     pub fn into_nodes(self) -> LibraryResult<Vec<KnowledgeNode>> {
-        let wire: Vec<WireKnowledgeNode> = serde_json::from_value(self.success_data()?)
-            .map_err(protocol_error)?;
+        let wire: Vec<WireKnowledgeNode> =
+            serde_json::from_value(self.success_data()?).map_err(protocol_error)?;
         wire.into_iter().map(TryInto::try_into).collect()
     }
 
     /// Decodes a language-neutral query result into SDK domain values.
     pub fn into_query_result(self) -> LibraryResult<LibraryQueryResult> {
-        let wire: WireQueryResult = serde_json::from_value(self.success_data()?)
-            .map_err(protocol_error)?;
+        let wire: WireQueryResult =
+            serde_json::from_value(self.success_data()?).map_err(protocol_error)?;
         wire.try_into()
     }
 

@@ -152,9 +152,10 @@ impl LibraryProvider for SqliteLibraryProvider {
             let mut entries = Vec::new();
             for row in rows {
                 let (id, title, description, path, terms_json) = row.map_err(sqlite_error)?;
-                let terms = serde_json::from_str::<BTreeSet<String>>(&terms_json).map_err(|error| {
-                    LibraryError::Provider(format!("invalid catalog terms_json: {error}"))
-                })?;
+                let terms =
+                    serde_json::from_str::<BTreeSet<String>>(&terms_json).map_err(|error| {
+                        LibraryError::Provider(format!("invalid catalog terms_json: {error}"))
+                    })?;
                 entries.push(CatalogEntry {
                     id,
                     title,

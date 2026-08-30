@@ -69,10 +69,7 @@ impl ProcessLibraryProvider {
     }
 
     /// Explicitly inherits selected variables from the host environment when present.
-    pub fn inherit_environment(
-        mut self,
-        names: impl IntoIterator<Item = impl AsRef<str>>,
-    ) -> Self {
+    pub fn inherit_environment(mut self, names: impl IntoIterator<Item = impl AsRef<str>>) -> Self {
         for name in names {
             let name = name.as_ref();
             if let Some(value) = std::env::var_os(name) {
@@ -132,14 +129,17 @@ impl ProcessLibraryProvider {
         let stdout_reader = thread::spawn(move || read_all(stdout));
         let stderr_reader = thread::spawn(move || read_all(stderr));
 
-        let request_bytes = serde_json::to_vec(request)
-            .map_err(|error| LibraryError::Provider(format!("failed to encode request: {error}")))?;
+        let request_bytes = serde_json::to_vec(request).map_err(|error| {
+            LibraryError::Provider(format!("failed to encode request: {error}"))
+        })?;
         if let Some(mut stdin) = child.stdin.take() {
             stdin.write_all(&request_bytes).map_err(|error| {
                 LibraryError::Provider(format!("failed to write process provider request: {error}"))
             })?;
             stdin.write_all(b"\n").map_err(|error| {
-                LibraryError::Provider(format!("failed to finish process provider request: {error}"))
+                LibraryError::Provider(format!(
+                    "failed to finish process provider request: {error}"
+                ))
             })?;
         }
 
@@ -207,13 +207,15 @@ impl LibraryProvider for ProcessLibraryProvider {
     }
 }
 
-fn wait_with_timeout(child: &mut std::process::Child, timeout: Duration) -> LibraryResult<ExitStatus> {
+fn wait_with_timeout(
+    child: &mut std::process::Child,
+    timeout: Duration,
+) -> LibraryResult<ExitStatus> {
     let started = Instant::now();
     loop {
-        if let Some(status) = child
-            .try_wait()
-            .map_err(|error| LibraryError::Provider(format!("failed waiting for provider: {error}")))?
-        {
+        if let Some(status) = child.try_wait().map_err(|error| {
+            LibraryError::Provider(format!("failed waiting for provider: {error}"))
+        })? {
             return Ok(status);
         }
         if started.elapsed() >= timeout {
@@ -247,8 +249,8 @@ fn minimal_process_environment() -> BTreeMap<String, String> {
 
 fn read_all(mut reader: impl Read) -> LibraryResult<Vec<u8>> {
     let mut bytes = Vec::new();
-    reader
-        .read_to_end(&mut bytes)
-        .map_err(|error| LibraryError::Provider(format!("failed reading provider output: {error}")))?;
+    reader.read_to_end(&mut bytes).map_err(|error| {
+        LibraryError::Provider(format!("failed reading provider output: {error}"))
+    })?;
     Ok(bytes)
 }

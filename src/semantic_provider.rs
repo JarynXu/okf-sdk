@@ -148,7 +148,11 @@ impl QueryProvider for VectorSemanticQueryProvider {
                 )]),
             });
         }
-        if self.entries.iter().any(|entry| entry.uri.library() != library) {
+        if self
+            .entries
+            .iter()
+            .any(|entry| entry.uri.library() != library)
+        {
             return Err(LibraryError::Provider(format!(
                 "semantic index '{}' contains entries for another Library",
                 self.id
@@ -159,7 +163,8 @@ impl QueryProvider for VectorSemanticQueryProvider {
         if query_vector.len() != dimension {
             return Err(LibraryError::Provider(format!(
                 "embedding provider returned dimension {}, expected {}",
-                query_vector.len(), dimension
+                query_vector.len(),
+                dimension
             )));
         }
         if query_vector.iter().any(|value| !value.is_finite()) {

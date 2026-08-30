@@ -22,11 +22,7 @@ impl S3ContentProvider {
     ///
     /// Credential and endpoint policy deliberately remain deployment concerns outside the Library
     /// domain model.
-    pub fn new(
-        id: impl Into<String>,
-        bucket: Box<Bucket>,
-        prefix: impl Into<String>,
-    ) -> Self {
+    pub fn new(id: impl Into<String>, bucket: Box<Bucket>, prefix: impl Into<String>) -> Self {
         Self {
             id: id.into(),
             bucket,
@@ -114,7 +110,10 @@ impl ContentProvider for S3ContentProvider {
     }
 
     fn read(&self, uri: &KnowledgeUri) -> LibraryResult<String> {
-        let response = self.bucket.get_object(self.key(uri.path())).map_err(s3_error)?;
+        let response = self
+            .bucket
+            .get_object(self.key(uri.path()))
+            .map_err(s3_error)?;
         String::from_utf8(response.as_slice().to_vec()).map_err(|error| {
             LibraryError::Provider(format!(
                 "S3 object '{}' is not UTF-8 knowledge content: {error}",
